@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Socket.IO chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font: 13px Helvetica, Arial;
+        }
+
+        form {
+            background: #000;
+            padding: 3px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+
+        form input {
+            border: 0;
+            padding: 10px;
+            margin-right: .5%;
+        }
+
+        #m {
+            width: 80%;
+        }
+
+        #name {
+            width: 9%;
+        }
+
+        form button {
+            width: 9%;
+            background: rgb(130, 224, 255);
+            border: none;
+            padding: 10px;
+        }
+
+        #messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        #messages li {
+            padding: 5px 10px;
+        }
+
+        #messages li:nth-child(odd) {
+            background: #eee;
+        }
+        
+        .user-is-typing{
+            position: fixed;
+            top:94%;
+            width: 100%;
+            padding: 3px;
+        }
+        
+    </style>
+</head>
+
+<body>
+    <ul id="messages"></ul>
+    <span class="user-is-typing"></span>
+    <form action="">
+        <input id="m" autocomplete="off" />
+        <input id="name" type="text" autocomplete="off">
+        <button>Send</button>
+
+    </form>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+        //document ready
+        $(function() {
+            
+            //asigning the socket
+            var socket = io();
+            $('form').submit(function() {
+                //handler for the message and name
+                var posted = {
+                    name: "John"
+                };
+                posted.msg = $('#m').val();
+                posted.name = $('#name').val();
+                
+                //emit the message then the send messasge is pressed
+                socket.emit('chat msg', posted);
+                $('#m').val('');
+                //append the message sent to the screen
+                $('#messages').append($('<li>').html("<b>" + posted.name + "</b> says: " + posted.msg));
+                return false;
+            });
+            //append others messages to the screen
+            socket.on('chat msg', function(message) {
+
+                $('#messages').append($('<li>').html("<b>" + message.name + "</b> says: " + message.msg));
+            });
+            
+            //user connected functionality
+            socket.on('conn', function(){
+                $('#messages').append($('<li>').text("A user connected"));
+            });
+            //user disconnected functionality
+            socket.on('disc', function(){
+                $('#messages').append($('<li>').text("A user disconnected"));
+            });
+            
+            // user typing functionality
+            $('#m').on('focus', function(){
+                var username = $('#name').val();
+                socket.emit('user typing', username);
+                console.log();
+            });
+            
+            socket.on("user typing", function(username){
+                console.log(username);
+                $('.user-is-typing').text(username + " is typing...");
+            });
+            
+            $('#m').on('focusout', function(){
+                socket.emit('user not typing');
+            });
+            socket.on("user not typing", function(username){
+                $('.user-is-typing').text('');
+            });
+            
+        });
+
+    </script>
+</body>
+
+</html>

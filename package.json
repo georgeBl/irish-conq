@@ -9,10 +9,13 @@
   "author": "George",
   "license": "MIT",
   "dependencies": {
+    "bootstrap": "^4.0.0",
     "cors": "^2.8.4",
     "domjson": "^0.1.2",
     "express": "^4.15.2",
+    "jquery": "^3.3.1",
     "mysql": "github:mysqljs/mysql",
+    "popper.js": "^1.12.9",
     "socket.io": "^2.0.4"
   }
 }

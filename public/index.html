@@ -39,10 +39,10 @@
 
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="firstAnswer"></button>
-                    <button type="button" class="btn btn-secondary" id="secondAnswer" dismiss="modal"></button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="thirdAnswer"></button>
-                    <button type="button" class="btn btn-secondary" id="forthAnswer" dismiss="modal"></button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="1Answer"></button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="2Answer"></button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="3Answer"></button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="4Answer"></button>
                 </div>
             </div>
         </div>
@@ -53,22 +53,19 @@
 
 
     <script>
-        
-        
-            //old question
-//        var question = "What is the population of Ireland?";
-//        var answer = ["4.7", "3.5", "6.2", "5.2"];
-        var question = [];
-        var answer = [];
-        
-        socket.on("question table", function(questionTable){
-           console.log("Question table event received");
-           question = questionTable; 
-           console.log(question);
-        });
-        
-        
         var socket = io();
+        //old question
+        //        var question = "What is the population of Ireland?";
+        //        var answer = ["4.7", "3.5", "6.2", "5.2"];
+        socket.on("question table", function(questionTable) {
+            console.log("Question table event received");
+            console.log(questionTable);
+            //           question = questionTable; 
+            //           console.log(question);
+        });
+        var test;
+        var correctAnswerId;
+
         d3.xml("/svg/irelandLow.svg").mimeType("image/svg+xml").get(function(error, xml) {
             if (error) throw error;
             document.body.appendChild(xml.documentElement);
@@ -79,32 +76,67 @@
 
             var svg = d3.select("body").select("svg");
             svg.selectAll("path").on("click", function() {
+
+                //get the id of the selected/clicked path //
+                var pathId = $(this).get(0).id;
+                //toggleing the empty modal
                 $('#myModal').modal('toggle');
 
-                $("#exampleModalLabel").html("Question Example");
-                $("#question").html(question);
-                $("#firstAnswer").html(answer[0]);
-                $("#secondAnswer").html(answer[1]);
-                $("#thirdAnswer").html(answer[2]);
-                $("#forthAnswer").html(answer[3]);
 
-                var pathId = $(this).get(0).id;
-                $("#firstAnswer").click(function() {
-                    socket.emit('right answer', pathId);
-                    console.log("Right answer event emitted!");
-                    $('#' + pathId).css("fill", "yellow");
+                //getting a question from the database //
+                //send an event to the database to make an sql query - more details in the app.js
+                socket.emit("request random question");
+                //getting the response from the server
+                socket.on("random question", function(response) {
+                    //populating the inputs and tags of the modal with the response from the server
+                    console.log(response);
+
+                    $("#exampleModalLabel").html("Question ID:" + response[0].question_id); //to be changed
+                    $("#question").html(response[0].question);
+                    $("#1Answer").html(response[0].answer); //id 1
+                    $("#2Answer").html(response[1].answer); //id 2
+                    $("#3Answer").html(response[2].answer); //id 3
+                    $("#4Answer").html(response[3].answer); //id 4
+                    //save the coorect answer //must be improved
+                    correctAnswerId = response[0].correctAnsId; //can be injected by the user/hacker as it is set in the html not in the js file
+
+
+                    console.log("i finished the socket and printed the question on the screen");
+
+
+                    console.log(pathId);
+                    //check if the correct answer was clicked//
+
+                    $('#' + correctAnswerId + 'Answer').click(function() {
+
+                        //emit the event to the server with the path id so that the other players can see if the answer was right
+                        socket.emit('right answer', pathId);
+
+                        console.log("Right answer event emitted!");
+
+                        //change the colour of the path.
+                        $('#' + pathId).css("fill", "yellow");
+                    });
+
+
                 });
 
 
 
 
 
-            });
 
+
+
+
+            });
+            //known bug.. seems like the 
+            //check if other users answered the question correctly
             socket.on('right answer', function(ter) {
                 console.log("Right answer event received");
+
+                //change the colour of the path
                 $('#' + ter).css("fill", "yellow");
-                console.log("HEEEY");
             });
 
         });

@@ -16,6 +16,7 @@
     "jquery": "^3.3.1",
     "mysql": "github:mysqljs/mysql",
     "popper.js": "^1.12.9",
-    "socket.io": "^2.0.4"
+    "socket.io": "^2.0.4",
+    "vue": "^2.5.13"
   }
 }

@@ -91,12 +91,12 @@
                     //populating the inputs and tags of the modal with the response from the server
                     console.log(response);
 
-                    $("#exampleModalLabel").html("Question ID:" + response[0].question_id); //to be changed
-                    $("#question").html(response[0].question);
-                    $("#1Answer").html(response[0].answer); //id 1
-                    $("#2Answer").html(response[1].answer); //id 2
-                    $("#3Answer").html(response[2].answer); //id 3
-                    $("#4Answer").html(response[3].answer); //id 4
+                    $("#exampleModalLabel").html("Question ID:" + response.question_id); //to be changed
+                    $("#question").html(response.question);
+                    $("#1Answer").html(response.answer); //id 1
+                    $("#2Answer").html(response.answer); //id 2
+                    $("#3Answer").html(response.answer); //id 3
+                    $("#4Answer").html(response.answer); //id 4
                     //save the coorect answer //must be improved
                     correctAnswerId = response[0].correctAnsId; //can be injected by the user/hacker as it is set in the html not in the js file
 
@@ -104,7 +104,6 @@
                     console.log("i finished the socket and printed the question on the screen");
 
 
-                    console.log(pathId);
                     //check if the correct answer was clicked//
 
                     $('#' + correctAnswerId + 'Answer').click(function() {

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Bootstrap -->
+    <!-- Latest compiled and minified CSS -->
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Optional theme -->
+    <!--    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">-->
+    <!-- Latest compiled and minified JavaScript -->
+    <!--    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script> -->
+
+    <!-- Stylesheets -->
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://npmcdn.com/tether@1.2.4/dist/js/tether.min.js"></script>
+    <script src="https://npmcdn.com/bootstrap@4.0.0-alpha.5/dist/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="https://d3js.org/d3-selection.v1.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/dist/domjson.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/mystyle.css">
+</head>
+
+<body>
+    <title>Irish Conqueror</title>
+    <div class="row" id="navbar">
+        <div class="col-sm-4">
+            <img src="css/logo_green.png" id="logo">
+        </div>
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-sm-3">
+                <!--                players-->
+                <div class="left-column">
+                    <!-- CONTENT GOES HERE -->
+                </div>
+            </div>
+
+            <div class="col-sm-6">
+                <!--                game-->
+                <div class="middle-column" id="game">
+                    <!-- Modal -->
+                    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel"></h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body" id="question">
+
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="1Answer"></button>
+                                    <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="2Answer"></button>
+                                    <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="3Answer"></button>
+                                    <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="4Answer"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-3">
+                <!--                chat-->
+                <div class="right-column">
+                    <!-- CONTENT GOES HERE -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        //        //old question
+        //        //        var question = "What is the population of Ireland?";
+        //        //        var answer = ["4.7", "3.5", "6.2", "5.2"];
+
+        var test;
+        var correctAnswerId;
+        var pathId;
+        //game
+        d3.xml("/svg/irelandLow.svg").mimeType("image/svg+xml").get(function(error, xml) {
+            if (error) throw error;
+            //append the middle div
+            $('#game').append(xml.documentElement);
+            //            document.body.appendChild(xml.documentElement);
+
+            d3.select("g").attr("transform", "scale(0.7)");
+            d3.select("svg").attr("width", 500);
+            d3.select("svg").attr("height", 600);
+
+            var svg = d3.select("body").select("svg");
+            //when path is clicked
+            svg.selectAll("path").on("click", function() {
+
+                //save the id of the clicked path //
+                pathId = $(this).get(0).id;
+                //toggleing the empty modal
+                $('#myModal').modal('toggle');
+
+
+                //get a rand question from the server //
+
+                socket.emit("request random question");
+                //getting the response from the server
+            });
+
+        });
+
+        socket.on("random question", function(response) {
+            //populating the inputs and tags of the modal with the response from the server
+            console.log(response);
+
+            $("#exampleModalLabel").html("Question ID:" + response.question_id); //to be changed
+            $("#question").html(response.question);
+            $("#1Answer").html(response.answer1); //id 1
+            $("#2Answer").html(response.answer2); //id 2
+            $("#3Answer").html(response.answer3); //id 3
+            $("#4Answer").html(response.answer4); //id 4
+            //save the coorect answer //must be improved
+            correctAnswerId = response.correctAnsId; //can be injected by the user/hacker as it is set in the html not in the js file
+
+            //clean all the on click events set if the user is choosing a wrong answer
+            $('.btn-answer').click(function() {
+                $('.btn-answer').off('click');
+            });
+
+
+            //check if the correct answer was clicked//
+
+            $('#' + correctAnswerId + 'Answer').click(function() {
+
+                //emit the event to the server with the path id so that the other players can see if the answer was right
+                socket.emit('right answer', pathId);
+
+                console.log("Right answer event emitted!");
+
+                //change the colour of the path.
+                $('#' + pathId).css("fill", "yellow");
+
+                //might not do anything
+                $(this).off('click');
+            });
+
+            //known bug.. seems like the 
+            //check if other users answered the question correctly
+
+
+        });
+        socket.on('right answer', function(ter) {
+            console.log("Right answer event received");
+
+            //change the colour of the path
+            $('#' + ter).css("fill", "yellow");
+        });
+
+    </script>
+
+
+</body>
+<html>

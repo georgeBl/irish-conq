@@ -1,0 +1,21 @@
+<html>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+<body>
+
+    <!--    Defining the list where all your messages goes // It can be a div idk/idc-->
+    <ul id="messages"></ul>
+
+
+    <script>
+        //append the list and insert an img tag in it and set the source
+        $('#messages').append($('<img>').attr('src', 'dylansDickIsSmall.img'));
+        // append the list / insert img tag / set a class / set the source
+        $('#messages').append($('<img>').addClass('dylansDick').attr('src', 'dylansDickIsSmall.img')); // like this
+        $('#messages').append($('<li>').text(msg)); // you might as well use this for the text message (will append to the unordered list (<ul>));
+
+    </script>
+</body>
+
+</html>

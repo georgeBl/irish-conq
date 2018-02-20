@@ -1,0 +1,36 @@
+body {
+    background-color: #40bf40;
+}
+
+.container {
+    margin-top: 10px;
+    /*	width:79%;*/
+}
+
+.col-sm-3,
+.col-sm-6 {
+    padding: 15px;
+}
+
+.left-column,
+.right-column,
+.middle-column {
+    background-color: #e6e6e6;
+    height: 600px;
+}
+
+
+
+#navbar {
+    background-color: #1c1c1c;
+    border-bottom: 10px solid black;
+    color: white;
+}
+
+#logo {
+    padding: 0px;
+    margin: 20px;
+    width: 250px;
+    height: 32px;
+    float: right;
+}

@@ -18,15 +18,19 @@ var server = http.createServer(app);
 var io = require('socket.io')(server);
 var port = 3000;
 
-var questionsTable = [];
 
+var questionsTable = [];
+var colArray = ['yellow', 'blue', 'green'];
+var pNumber = 0;
+
+//db config
 var sqlConnection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
     password: '',
-    database: 'irish-conq'
+    database: 'irishq'
 });
-
+//get all the questions from the database
 sqlConnection.connect(function (err) {
     if (err) throw err;
     sqlQuery = "SELECT * FROM questiontable";
@@ -34,46 +38,60 @@ sqlConnection.connect(function (err) {
         if (error) throw error;
         questionsTable = results;
     });
-
-
-
-    //    console.log("connected");
 });
 
 
 
+//set the public folder as the default homepage route
 app.use(express.static("./public"));
 
+//might be usefull in the future
 app.get('/fullRoom', function (req, res) {
 
     res.send('The room is full');
-});
+}); 
 
 io.on('connection', function (socket) {
+    
+    //setting up the player
+    
+    
+    if(pNumber<4){
+        //new Player(id, socketid, color)
+        var player = new Player(pNumber, socket.id, colArray[pNumber]);
+        pNumber++;
+    } else{
+        io.emit('room-full');
+    }
+   
 
     //deciding when the game starts
-    console.log('user ' + socket.id + ' connected \n')
-    players.push(socket.id);
+//    players.push(socket.id); old
+    players.push(player);
     if (players.length < 3) {
         //wait for all players to connect
         console.log('waiting for players \n');
+        io.emit('waiting-for-players');
     } else if (players.length === 3) {
         //room is full start the game
         console.log('game starts \n');
-
-
-
-
-
-
+        io.emit('game-ready');
     } else {
         //game already started
         //need to redirect the user to a different page for now // Don't know how to do that
         console.log('room is full \n');
-        players.pop(socket.id); //pops the user from the array
-        app.use(express.static("./fullRoom")); //doesn't work
+        players.pop(player); //pops the user from the array
+        //redirect the user to a different page 
+//        app.use(express.static("./fullRoom")); //doesn't work
+        //untill redirect will work
+        io.emit('room-full');
     }
-
+    //show players event
+    io.emit('user-connected', players);
+    
+    
+    
+    
     socket.on('disconnect', function () {
         //        io.emit('disc'); //not using yet
         console.log('user ' + socket.id + ' disconnected\n');
@@ -83,20 +101,11 @@ io.on('connection', function (socket) {
     console.log('players array ' + players + '\n\n');
 
 
-    //    //test to see if the connection is estabilished 
-    //    //to be edited to give each user an unique id
-    //    io.emit('conn');
-
-
-
 
     socket.on('request random question', function () {
         var question = randomQuestion(questionsTable)
         socket.emit('random question', question);
-
-
     });
-
 
     //this method runs multiple times, for some reason //doesnt cause any trouble yet
     socket.on('right answer', function (ter) {
@@ -106,15 +115,7 @@ io.on('connection', function (socket) {
         console.log("Right answer event sent");
     });
 
-
 });
-
-
-
-
-
-
-
 
 
 //start the server on selected port! in this case 3000
@@ -139,4 +140,10 @@ function randomQuestion(questions) {
     var question = questions[Math.floor(Math.random() * 100 % 91) + 1];
     console.log(question);
     return question;
+}
+
+function Player(_id, _socketId, _col){
+    this.id = _id;
+    this.socketId = _socketId;
+    this.color = _col;
 }

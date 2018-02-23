@@ -34,3 +34,9 @@ body {
     height: 32px;
     float: right;
 }
+.wide{
+    height:50px;
+    background-color:white;
+    text-align:center;
+    padding-top:15px;
+}

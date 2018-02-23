@@ -32,11 +32,16 @@
         </div>
     </div>
     <div class="container">
+        <div class='row'>
+            <div class="col-12 wide">
+                <p class="instruction" id="instruction"></p>
+            </div>
+        </div>
         <div class="row">
             <div class="col-sm-3">
                 <!--                players-->
                 <div class="left-column">
-                    <!-- CONTENT GOES HERE -->
+                    <ul id="players-list" class="players-list"></ul>
                 </div>
             </div>
 
@@ -86,6 +91,42 @@
         var test;
         var correctAnswerId;
         var pathId;
+        var game_ready = false;
+        var player;
+        socket.on('user-connected', function(players) {
+            $("#players-list").empty()
+            console.log(players);
+            for (i = 0; i < players.length; i++) {
+                $('#players-list').append($('<li>').html(players[i].socketId));
+            }
+            for (i = 0; i < players.length; i++){
+                if(socket.id = players[i].socketId){
+                    player = players[i];
+                }
+            }
+
+        });
+
+        socket.on('waiting-for-players', function() {
+            $('#instruction').html('Waiting for players...');
+            game_ready = false;
+        });
+        socket.on('game-ready', function() {
+            $('#instruction').html('Game starting soon...');
+            game_ready = true;
+
+            setTimeout(function(event) {
+
+            }, 3000);
+
+        });
+
+        socket.on('room-full', function() {
+            game_ready = false;
+            $('#instruction').html('Room is full');
+        });
+
+
         //game
         d3.xml("/svg/irelandLow.svg").mimeType("image/svg+xml").get(function(error, xml) {
             if (error) throw error;
@@ -159,8 +200,26 @@
             console.log("Right answer event received");
 
             //change the colour of the path
-            $('#' + ter).css("fill", "yellow");
+            $('#' + ter).css("fill", player.color);
         });
+
+        function startTimer(duration, display) {
+            var timer = duration,
+                minutes, seconds;
+            setInterval(function() {
+                minutes = parseInt(timer / 60, 10)
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    timer = duration;
+                }
+            }, 1000);
+        }
 
     </script>
 

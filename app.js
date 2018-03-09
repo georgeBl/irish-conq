@@ -17,8 +17,11 @@ var app = express();
 var server = http.createServer(app);
 var io = require('socket.io')(server);
 var port = 3000;
+var path = require('path');
 
-
+var userId;
+var users;
+var userName;
 var questionsTable = [];
 var colArray = ['yellow', 'blue', 'green'];
 var pNumber = 0;
@@ -38,35 +41,69 @@ sqlConnection.connect(function (err) {
         if (error) throw error;
         questionsTable = results;
     });
+    sqlQuery = "SELECT * FROM users";
+    sqlConnection.query(sqlQuery, function (error, results, fields) {
+        if (error) throw error;
+        users = results;
+        console.log(users[5].username);
+    });
 });
 
 
 
 //set the public folder as the default homepage route
-app.use(express.static("./public"));
+//app.use(express.static("./public"));
+
+app.use('/game', express.static(path.join(__dirname, '/public')));
+
+app.get('/svg', function (req, res) {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.sendFile(path.join(__dirname, '/svg/irelandLow.svg'));
+});
+
+app.get('/dist', function (req, res) {
+    res.setHeader('Content-Type', 'text/javascript');
+    res.sendFile(path.join(__dirname, '/public/dist/domJSON.min.js'));
+});
+
+
+
+app.get('/game/:id', function (req, res, next) {
+    userId = req.params.id;
+    for (var i = 0; i < users.length; i++) {
+        if (users[i].id === userId) {
+            userName = users[i].username;
+            break;
+        }
+    }
+    next();
+}, function (req, res) {
+    res.redirect('/game');
+});
+
 
 //might be usefull in the future
 app.get('/fullRoom', function (req, res) {
-
     res.send('The room is full');
-}); 
+});
 
 io.on('connection', function (socket) {
-    
+
     //setting up the player
-    
-    
-    if(pNumber<4){
+
+
+    if (pNumber < 4) {
         //new Player(id, socketid, color)
-        var player = new Player(pNumber, socket.id, colArray[pNumber]);
+        var player = new Player(pNumber, userName, colArray[pNumber]);
+        
         pNumber++;
-    } else{
+    } else {
         io.emit('room-full');
     }
-   
+
 
     //deciding when the game starts
-//    players.push(socket.id); old
+    //    players.push(socket.id); old
     players.push(player);
     if (players.length < 3) {
         //wait for all players to connect
@@ -82,16 +119,13 @@ io.on('connection', function (socket) {
         console.log('room is full \n');
         players.pop(player); //pops the user from the array
         //redirect the user to a different page 
-//        app.use(express.static("./fullRoom")); //doesn't work
+        //        app.use(express.static("./fullRoom")); //doesn't work
         //untill redirect will work
         io.emit('room-full');
     }
     //show players event
     io.emit('user-connected', players);
-    
-    
-    
-    
+
     socket.on('disconnect', function () {
         //        io.emit('disc'); //not using yet
         console.log('user ' + socket.id + ' disconnected\n');
@@ -142,7 +176,7 @@ function randomQuestion(questions) {
     return question;
 }
 
-function Player(_id, _socketId, _col){
+function Player(_id, _socketId, _col) {
     this.id = _id;
     this.socketId = _socketId;
     this.color = _col;

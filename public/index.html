@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
+<html>
 
 <head>
 
@@ -11,133 +11,205 @@
     <script src="https://d3js.org/d3.v4.js"></script>
     <script src="https://d3js.org/d3-selection.v1.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/dist/domjson.min.js"></script>
+    <script src="/dist"></script>
+    <link rel="stylesheet" type="text/css" href="css/mystyle.css">
 </head>
 
 <body>
-    <h2>Click on a path to load a question</h2>
-
-
-
-
-    <!-- Modal -->
-    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">
-                        <script>
-
-
-                        </script>
-                    </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
+    <title>Irish Conqueror</title>
+    <div class="row" id="navbar">
+        <div class="col-sm-4">
+            <a href="http://localhost/irish-conq-master/public/home"><img src="css/logo_green.png" id="logo"></a>
+        </div>
+    </div>
+    <div class="container">
+        <div class='row'>
+            <div class="col-12 wide">
+                <p class="instruction" id="instruction"></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-3">
+                <!--                players-->
+                <div class="left-column">
+                    <ul id="players-list" class="players-list"></ul>
                 </div>
-                <div class="modal-body" id="question">
+            </div>
 
+            <div class="col-sm-6">
+                <!--                game-->
+                <div class="middle-column" id="game">
+                    <!-- Modal -->
+                    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel"></h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body" id="question">
+
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="1Answer"></button>
+                                    <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="2Answer"></button>
+                                    <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="3Answer"></button>
+                                    <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="4Answer"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="1Answer"></button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="2Answer"></button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="3Answer"></button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="4Answer"></button>
+            </div>
+
+            <div class="col-sm-3">
+                <!--                chat-->
+                <div class="right-column">
+                    <!-- CONTENT GOES HERE -->
                 </div>
             </div>
         </div>
     </div>
 
-
-
-
-
     <script>
         var socket = io();
-        //old question
-        //        var question = "What is the population of Ireland?";
-        //        var answer = ["4.7", "3.5", "6.2", "5.2"];
-        socket.on("question table", function(questionTable) {
-            console.log("Question table event received");
-            console.log(questionTable);
-            //           question = questionTable; 
-            //           console.log(question);
-        });
         var test;
         var correctAnswerId;
+        var pathId;
+        var game_ready = false;
+        var player;
+        socket.on('user-connected', function(players) {
+            $("#players-list").empty();
+            console.log(players);
+            for (i = 0; i < players.length; i++) {
+                $('#players-list').append($('<li>').html(players[i].socketId));
+            }
+            for (i = 0; i < players.length; i++){
+                if(socket.id = players[i].socketId){
+                    player = players[i];
+                }
+            }
 
-        d3.xml("/svg/irelandLow.svg").mimeType("image/svg+xml").get(function(error, xml) {
+        });
+
+        socket.on('waiting-for-players', function() {
+            $('#instruction').html('Waiting for players...');
+            game_ready = false;
+        });
+        socket.on('game-ready', function() {
+            $('#instruction').html('Game starting soon...');
+            game_ready = true;
+
+            setTimeout(function(event) {
+
+            }, 3000);
+
+        });
+
+        socket.on('room-full', function() {
+            game_ready = false;
+            $('#instruction').html('Room is full');
+        });
+
+
+        //game
+        d3.xml("/svg").mimeType("image/svg+xml").get(function(error, xml) {
             if (error) throw error;
-            document.body.appendChild(xml.documentElement);
+            //append the middle div
+            $('#game').append(xml.documentElement);
+            //            document.body.appendChild(xml.documentElement);
 
             d3.select("g").attr("transform", "scale(0.7)");
             d3.select("svg").attr("width", 500);
             d3.select("svg").attr("height", 600);
 
             var svg = d3.select("body").select("svg");
+            //when path is clicked
             svg.selectAll("path").on("click", function() {
 
-                //get the id of the selected/clicked path //
-                var pathId = $(this).get(0).id;
+                //save the id of the clicked path //
+                pathId = $(this).get(0).id;
                 //toggleing the empty modal
                 $('#myModal').modal('toggle');
 
 
-                //getting a question from the database //
-                //send an event to the database to make an sql query - more details in the app.js
+                //get a rand question from the server //
+
                 socket.emit("request random question");
                 //getting the response from the server
-                socket.on("random question", function(response) {
-                    //populating the inputs and tags of the modal with the response from the server
-                    console.log(response);
-
-                    $("#exampleModalLabel").html("Question ID:" + response.question_id); //to be changed
-                    $("#question").html(response.question);
-                    $("#1Answer").html(response.answer); //id 1
-                    $("#2Answer").html(response.answer); //id 2
-                    $("#3Answer").html(response.answer); //id 3
-                    $("#4Answer").html(response.answer); //id 4
-                    //save the coorect answer //must be improved
-                    correctAnswerId = response[0].correctAnsId; //can be injected by the user/hacker as it is set in the html not in the js file
-
-
-                    console.log("i finished the socket and printed the question on the screen");
-
-
-                    //check if the correct answer was clicked//
-
-                    $('#' + correctAnswerId + 'Answer').click(function() {
-
-                        //emit the event to the server with the path id so that the other players can see if the answer was right
-                        socket.emit('right answer', pathId);
-
-                        console.log("Right answer event emitted!");
-
-                        //change the colour of the path.
-                        $('#' + pathId).css("fill", "yellow");
-                    });
-
-
-                });
-
-
-
-
-
-
-
-
-
-            });
-            //known bug.. seems like the 
-            //check if other users answered the question correctly
-            socket.on('right answer', function(ter) {
-                console.log("Right answer event received");
-
-                //change the colour of the path
-                $('#' + ter).css("fill", "yellow");
             });
 
         });
 
+        socket.on("random question", function(response) {
+            //populating the inputs and tags of the modal with the response from the server
+            console.log(response);
+
+            $("#exampleModalLabel").html("Question ID:" + response.question_id); //to be changed
+            $("#question").html(response.question);
+            $("#1Answer").html(response.answer1); //id 1
+            $("#2Answer").html(response.answer2); //id 2
+            $("#3Answer").html(response.answer3); //id 3
+            $("#4Answer").html(response.answer4); //id 4
+            //save the coorect answer //must be improved
+            correctAnswerId = response.correctAnsId; //can be injected by the user/hacker as it is set in the html not in the js file
+
+            //clean all the on click events set if the user is choosing a wrong answer
+            $('.btn-answer').click(function() {
+                $('.btn-answer').off('click');
+            });
+
+
+            //check if the correct answer was clicked//
+
+            $('#' + correctAnswerId + 'Answer').click(function() {
+
+                //emit the event to the server with the path id so that the other players can see if the answer was right
+                socket.emit('right answer', pathId);
+
+                console.log("Right answer event emitted!");
+
+                //change the colour of the path.
+                $('#' + pathId).css("fill", "yellow");
+
+                //might not do anything
+                $(this).off('click');
+            });
+
+            //known bug.. seems like the 
+            //check if other users answered the question correctly
+
+
+        });
+        socket.on('right answer', function(ter) {
+            console.log("Right answer event received");
+
+            //change the colour of the path
+            $('#' + ter).css("fill", player.color);
+        });
+
+        function startTimer(duration, display) {
+            var timer = duration,
+                minutes, seconds;
+            setInterval(function() {
+                minutes = parseInt(timer / 60, 10)
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    timer = duration;
+                }
+            }, 1000);
+        }
+
     </script>
+
+
+</body>
+<html>

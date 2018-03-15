@@ -20,7 +20,7 @@ var port = 3000;
 var path = require('path');
 
 var userId;
-var users;
+var users = [];
 var userName;
 var questionsTable = [];
 var colArray = ['yellow', 'blue', 'green'];
@@ -44,40 +44,50 @@ sqlConnection.connect(function (err) {
     sqlQuery = "SELECT * FROM users";
     sqlConnection.query(sqlQuery, function (error, results, fields) {
         if (error) throw error;
-        users = results;
-        console.log(users[5].username);
+        //go trough all the results one my one
+        results.forEach(function (result) {
+            //create a new instance of User using the result of each db row
+            var user = new User(result.id, result.username, result.email, result.password, result.coins, result.experience, result.image);
+            //save the user into the users array
+            users.push(user);
+        });
     });
 });
 
 
+//set the route of the game
+app.use('/game/', express.static(path.join(__dirname, '/public')));
 
-//set the public folder as the default homepage route
-//app.use(express.static("./public"));
 
-app.use('/game', express.static(path.join(__dirname, '/public')));
-
+//set the route of the svg and dist files
 app.get('/svg', function (req, res) {
     res.setHeader('Content-Type', 'image/svg+xml');
     res.sendFile(path.join(__dirname, '/svg/irelandLow.svg'));
 });
-
 app.get('/dist', function (req, res) {
     res.setHeader('Content-Type', 'text/javascript');
     res.sendFile(path.join(__dirname, '/public/dist/domJSON.min.js'));
 });
 
 
-
+//a way of handling bad request
+//initiate connectedUser variable with an value and if it doesnt change redirect the user to a different page
+var connectedUser;
+//get the user id from the link
 app.get('/game/:id', function (req, res, next) {
+    //store user id
     userId = req.params.id;
-    for (var i = 0; i < users.length; i++) {
-        if (users[i].id === userId) {
-            userName = users[i].username;
-            break;
+    //check which user joined the game room using the id
+    for (i = 0; i < users.length; i++) {
+        if (users[i].id == userId) {
+            connectedUser = users[i];
+            console.log('\n User found! It is: ' + connectedUser.username);
         }
     }
+    userId = -1;
     next();
 }, function (req, res) {
+    //redirect the user to the game page
     res.redirect('/game');
 });
 
@@ -89,65 +99,80 @@ app.get('/fullRoom', function (req, res) {
 
 io.on('connection', function (socket) {
 
-    //setting up the player
+    //new Player(id, socketid, username, color) //only usefull information is sent back and forth
+    //create a new instance of player each time a user access the link
 
-
-    if (pNumber < 4) {
-        //new Player(id, socketid, color)
-        var player = new Player(pNumber, userName, colArray[pNumber]);
-        
-        pNumber++;
-    } else {
-        io.emit('room-full');
+    if (connectedUser != null) {
+        var player = new Player(connectedUser.id, socket.id, connectedUser.username, 'yellow');
+        players.push(player);
+        connectedUser = null;
+        console.log(players);
     }
-
-
-    //deciding when the game starts
-    //    players.push(socket.id); old
-    players.push(player);
-    if (players.length < 3) {
-        //wait for all players to connect
-        console.log('waiting for players \n');
-        io.emit('waiting-for-players');
-    } else if (players.length === 3) {
-        //room is full start the game
-        console.log('game starts \n');
-        io.emit('game-ready');
-    } else {
-        //game already started
-        //need to redirect the user to a different page for now // Don't know how to do that
-        console.log('room is full \n');
-        players.pop(player); //pops the user from the array
-        //redirect the user to a different page 
-        //        app.use(express.static("./fullRoom")); //doesn't work
-        //untill redirect will work
-        io.emit('room-full');
-    }
-    //show players event
     io.emit('user-connected', players);
-
     socket.on('disconnect', function () {
-        //        io.emit('disc'); //not using yet
-        console.log('user ' + socket.id + ' disconnected\n');
-        players.pop(socket.id);
+        console.log('user disconnected');
+
     });
 
-    console.log('players array ' + players + '\n\n');
+    //count the clients connected
+    console.log(io.engine.clientsCount);
+
+
+    //    io.emit('room-full');
 
 
 
-    socket.on('request random question', function () {
-        var question = randomQuestion(questionsTable)
-        socket.emit('random question', question);
-    });
 
-    //this method runs multiple times, for some reason //doesnt cause any trouble yet
-    socket.on('right answer', function (ter) {
-        console.log(ter);
-        console.log("Right answer event received");
-        socket.broadcast.emit('right answer', ter);
-        console.log("Right answer event sent");
-    });
+
+
+
+    //
+    //
+    //    //deciding when the game starts
+    //    players.push(player);
+    //    if (players.length < 3) {
+    //        //wait for all players to connect
+    //        console.log('waiting for players \n');
+    //        io.emit('waiting-for-players');
+    //    } else if (players.length === 3) {
+    //        //room is full start the game
+    //        console.log('game starts \n');
+    //        io.emit('game-ready');
+    //    } else {
+    //        //game already started
+    //        //need to redirect the user to a different page for now // Don't know how to do that
+    //        console.log('room is full \n');
+    //        players.pop(player); //pops the user from the array
+    //        //redirect the user to a different page 
+    //        //        app.use(express.static("./fullRoom")); //doesn't work
+    //        //untill redirect will work
+    //        io.emit('room-full');
+    //    }
+    //    //show players event
+    //
+    //
+    //    socket.on('disconnect', function () {
+    //        //        io.emit('disc'); //not using yet
+    //        console.log('user ' + socket.id + ' disconnected\n');
+    //        players.pop(socket.id);
+    //    });
+    //
+    //    console.log(players);
+    //
+    //    io.emit('user-connected', players);
+    //
+    //    socket.on('request random question', function () {
+    //        var question = randomQuestion(questionsTable)
+    //        socket.emit('random question', question);
+    //    });
+    //
+    //    //this method runs multiple times, for some reason //doesnt cause any trouble yet
+    //    socket.on('right answer', function (ter) {
+    //        console.log(ter);
+    //        console.log("Right answer event received");
+    //        socket.broadcast.emit('right answer', ter);
+    //        console.log("Right answer event sent");
+    //    });
 
 });
 
@@ -156,19 +181,6 @@ io.on('connection', function (socket) {
 server.listen(port, function () {
     console.log('listening on *:' + port + '\n');
 });
-//Math.floor(Math.random()*100%50)
-//    socket.on('chat msg', function (msg) {
-//        console.log('message:' + msg);
-//        socket.broadcast.emit('chat msg', msg);
-//    });
-//    socket.on('user typing', function (username) {
-//        console.log(username + " is typing");
-//        io.emit('user typing', username);
-//    });
-//    socket.on('user not typing', function () {
-//        io.emit('user not typing');
-//    });
-
 
 function randomQuestion(questions) {
     var question = questions[Math.floor(Math.random() * 100 % 91) + 1];
@@ -176,8 +188,22 @@ function randomQuestion(questions) {
     return question;
 }
 
-function Player(_id, _socketId, _col) {
+function Player(_id, _socketId, _username, _col) {
     this.id = _id;
     this.socketId = _socketId;
+    this.username = _username;
     this.color = _col;
+
 }
+
+function User(_id, _username, _email, _password, _coins, _experience, _image) {
+    this.id = _id;
+    this.username = _username;
+    this.email = _email;
+    this.password = _password;
+    this.coins = _coins;
+    this.experience = _experience;
+    this.image = _image;
+}
+
+//TODO: SET AN ALGORITHM THAT SETS THE COLOURS OF THE PLAYERS

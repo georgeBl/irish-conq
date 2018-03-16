@@ -31,7 +31,7 @@ var sqlConnection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
     password: '',
-    database: 'irishq'
+    database: 'irish-conq'
 });
 //get all the questions from the database
 sqlConnection.connect(function (err) {
@@ -97,6 +97,26 @@ app.get('/fullRoom', function (req, res) {
     res.send('The room is full');
 });
 
+//redirect the user in case he tries to access different pages
+app.get('/', function (req, res) {
+    res.redirect('http://localhost/irish-conq/public/');
+});
+
+//handle bad requests
+app.all('*', function (req, res) {
+    throw new Error("Bad request")
+});
+app.use(function (e, req, res, next) {
+    if (e.message === "Bad request") {
+        res.status(400).json({
+            error: {
+                msg: e.message,
+                stack: e.stack
+            }
+        });
+    }
+});
+
 io.on('connection', function (socket) {
 
     //new Player(id, socketid, username, color) //only usefull information is sent back and forth
@@ -106,15 +126,38 @@ io.on('connection', function (socket) {
         var player = new Player(connectedUser.id, socket.id, connectedUser.username, 'yellow');
         players.push(player);
         connectedUser = null;
-        console.log(players);
+        //        console.log(players);
+    } else {
+        //TODO: REDIRECT THE USER TO A DIFFERENT PAGE / INVALID JOIN 
     }
+
     io.emit('user-connected', players);
+
     socket.on('disconnect', function () {
         console.log('user disconnected');
-
+        var found = findObjectByKey(players, 'socketId', socket.id);
+        if (found != null) {
+            players.splice(found, 1)
+        }
+        io.emit('user-connected', players);
     });
 
-    //count the clients connected
+
+    //chat functionality
+    socket.on('chat msg', function (msg) {
+        //THE COMMENTED CODE CAN BE USED IN ORDER TO SAVE THE MESSAGES INTO THE DATABASE
+        //        sql = "INSERT INTO messages (user, message) VALUES ('" + msg.user + "', '" + msg.msg + "');";
+        //        console.log(sql);
+        //        conn.query(sql, function (error, results, fields) {
+        //            if (error) throw error;
+        //        });
+        //send the message to the other users
+        socket.broadcast.emit('chat msg', msg);
+    });
+
+
+
+    //show the number of connected players to the webiste (including the ones without an ID)
     console.log(io.engine.clientsCount);
 
 
@@ -204,6 +247,16 @@ function User(_id, _username, _email, _password, _coins, _experience, _image) {
     this.coins = _coins;
     this.experience = _experience;
     this.image = _image;
+}
+
+function findObjectByKey(array, key, value) {
+    for (var i = 0; i < array.length; i++) {
+        if (array[i][key] === value) {
+            //            return array[i];
+            return i;
+        }
+    }
+    return null;
 }
 
 //TODO: SET AN ALGORITHM THAT SETS THE COLOURS OF THE PLAYERS

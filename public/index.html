@@ -2,7 +2,6 @@
 <html>
 
 <head>
-
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://npmcdn.com/tether@1.2.4/dist/js/tether.min.js"></script>
     <script src="https://npmcdn.com/bootstrap@4.0.0-alpha.5/dist/js/bootstrap.min.js"></script>
@@ -40,7 +39,7 @@
                 <!--                game-->
                 <div class="middle-column" id="game">
                     <!-- Modal -->
-                    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true" data-backdrop="static">
                         <div class="modal-dialog" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
@@ -66,9 +65,19 @@
 
             <div class="col-sm-3">
                 <!--                chat-->
-                <div class="right-column">
-                    <!-- CONTENT GOES HERE -->
+                <div class="right-column" id="right-column">
+                    <ul id="messages" class="list-group"></ul>
                 </div>
+                <form action="" method=" " id="message-input-form">
+                    <div class="input-group mb-3">
+
+                        <input type="text" class="form-control " placeholder="Message..." aria-label="Message" aria-describedby="addon?" id="text-input" autocomplete="off">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" id="message-input" type="submit" type="button">Button</button>
+                        </div>
+
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -80,20 +89,22 @@
         var pathId;
         var game_ready = false;
         var player;
-        socket.on('user-connected', function(players) {
+        var players = [];
+        socket.on('user-connected', function(_players) {
             $("#players-list").empty();
-            console.log(players);
-            for (i = 0; i < players.length; i++) {
-                $('#players-list').append($('<li>').html(players[i].username));
-            }
-            for (i = 0; i < players.length; i++) {
-                if (socket.id = players[i].socketId) {
+            players = _players;
+            console.log(_players);
+            for (i = 0; i < _players.length; i++) {
+                $('#players-list').append($('<li>').addClass(_players[i].username).html(_players[i].username));
+                if (socket.id === players[i].socketId) {
                     player = players[i];
+                    $('.' + player.username).html(player.username + ' - You');
                 }
             }
-
         });
 
+        //TODO: fix player function - learn how to use callback functions
+        //        
         socket.on('waiting-for-players', function() {
             $('#instruction').html('Waiting for players...');
             game_ready = false;
@@ -189,6 +200,49 @@
             //change the colour of the path
             $('#' + ter).css("fill", player.color);
         });
+
+
+
+
+        $('#message-input-form').on('submit', function(event) {
+            event.preventDefault();
+            socket.emit('chat msg', {
+                user: player.username,
+                msg: $('#text-input').val()
+            });
+            $('#messages').append($('<li>').addClass('list-group-item').html(
+                "<b>" +
+                player.username +
+                "</b> says: " +
+                $('#text-input').val()));
+            $('#text-input').val('');
+            var myDiv = document.getElementById('right-column');
+            myDiv.scrollTop = myDiv.scrollHeight;
+        });
+        socket.on('chat msg', function(message) {
+            $('#messages').append($('<li>').addClass('list-group-item').html(
+                "<b> " +
+                message.user +
+                "</b> says: " +
+                message.msg));
+            var myDiv = document.getElementById('right-column');
+            myDiv.scrollTop = myDiv.scrollHeight;
+        });
+
+    </script>
+
+
+    <script>
+        //TODO: Move the scripts into a separate file
+        function findObjectByKey(array, key, value) {
+            for (var i = 0; i < array.length; i++) {
+                if (array[i][key] === value) {
+                    //            return array[i];
+                    return i;
+                }
+            }
+            return null;
+        }
 
         function startTimer(duration, display) {
             var timer = duration,

@@ -19,6 +19,24 @@ body {
     height: 600px;
 }
 
+/*TODO:This is the list of the players, must be styled*/
+
+.left-column {
+    word-wrap: break-word;
+}
+
+
+/*TODO: This is the chat, must be styled!*/
+
+.right-column {
+    word-wrap: break-word;
+    overflow-y: scroll;
+}
+
+.message-input-form {
+    bottom: 0;
+    top: 94%;
+}
 
 
 #navbar {
@@ -34,9 +52,10 @@ body {
     height: 32px;
     float: right;
 }
-.wide{
-    height:50px;
-    background-color:white;
-    text-align:center;
-    padding-top:15px;
+
+.wide {
+    height: 50px;
+    background-color: white;
+    text-align: center;
+    padding-top: 15px;
 }

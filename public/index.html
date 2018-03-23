@@ -38,7 +38,7 @@
             <div class="col-sm-6">
                 <!--                game-->
                 <div class="middle-column" id="game">
-                    <!-- Modal -->
+                    <!-- Question Modal-->
                     <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true" data-backdrop="static">
                         <div class="modal-dialog" role="document">
                             <div class="modal-content">
@@ -56,6 +56,25 @@
                                     <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="2Answer"></button>
                                     <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="3Answer"></button>
                                     <button type="button" class="btn btn-secondary btn-answer" data-dismiss="modal" id="4Answer"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal fade" id="statsModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true" data-backdrop="static">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="stats-title"></h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body" id="player-position">
+                                    <ul id="player-position-list" class="list-group"></ul>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary btn-answer" data-dismiss="modal" id="homepage-btn"></button>
+
                                 </div>
                             </div>
                         </div>
@@ -90,6 +109,33 @@
         var game_ready = false;
         var player;
         var players = [];
+
+
+
+        var checkPaths = setInterval(function() {
+            var remainingPaths = 0;
+            var svg = d3.select("body").select("svg");
+            var path = svg.selectAll("path").each(function(d, i) {
+                if ($(this).attr("taken") == "false") {
+                    remainingPaths++;
+                }
+            });
+
+            if (remainingPaths === 0) {
+                socket.emit('game-over');
+            }
+            return remainingPaths;
+        }, 2000);
+
+
+        //stop the game;
+        socket.on('end-game', function() {
+            console.log('event received');
+            clearInterval(checkPaths);
+            game_ready = false;
+            socket.emit('save-stats', player);
+        });
+
         socket.on('user-connected', function(_players) {
             $("#players-list").empty();
             players = _players;
@@ -103,20 +149,34 @@
             }
         });
 
-        //TODO: fix player function - learn how to use callback functions
-        //        
+        socket.on('update-players', function(_players) {
+            players = _players;
+        });
+
+        socket.on('show-stats', function(_player) {
+            player = _player;
+            $('#statsModal').modal('toggle');
+            $("#stats-title").html("You are placed: " + player.position);
+            for (i = 0; i < players.length; i++) {
+                $("#player-position-list").append($('<li>').addClass('list-group-item').html(players[i].username + " - " + players[i].counties));
+            }
+            $("#homepage-btn").html('Return');
+        });
+        $("#homepage-btn").on("click", function() {
+            //TODO: Reddirect the user to the main page.
+
+        });
         socket.on('waiting-for-players', function() {
             $('#instruction').html('Waiting for players...');
             game_ready = false;
         });
         socket.on('game-ready', function() {
-            $('#instruction').html('Game starting soon...');
+            $('#instruction').html('Game starts!');
             game_ready = true;
 
             setTimeout(function(event) {
 
-            }, 3000);
-
+            }, 1000);
         });
 
         socket.on('room-full', function() {
@@ -137,21 +197,26 @@
             d3.select("svg").attr("height", 600);
 
             var svg = d3.select("body").select("svg");
+
+            svg.selectAll("path").attr("taken", "false");
+
             //when path is clicked
             svg.selectAll("path").on("click", function() {
+                if ($(this).attr('taken') == "true") {
+                    //TODO: DO NOT LET THE USER TAKE THE PATH
+                    console.log("county taken");
 
-                //save the id of the clicked path //
-                pathId = $(this).get(0).id;
-                //toggleing the empty modal
-                $('#myModal').modal('toggle');
+                } else if (game_ready) {
+                    //save the id of the clicked path //
+                    pathId = $(this).get(0).id;
 
-
-                //get a rand question from the server //
-
-                socket.emit("request random question");
-                //getting the response from the server
+                    //toggleing the empty modal
+                    $('#myModal').modal('toggle');
+                    //get a rand question from the server //
+                    socket.emit("request random question");
+                    //getting the response from the server
+                }
             });
-
         });
 
         socket.on("random question", function(response) {
@@ -177,16 +242,22 @@
 
             $('#' + correctAnswerId + 'Answer').click(function() {
 
-                //emit the event to the server with the path id so that the other players can see if the answer was right
-                socket.emit('right answer', pathId);
 
+
+
+                //emit the event to the server with the path id so that the other players can see if the answer was right
+                player.pathId = pathId;
+                player.counties++;
+                socket.emit('right answer', player);
+                socket.emit('conquer-county', pathId);
                 console.log("Right answer event emitted!");
 
                 //change the colour of the path.
-                $('#' + pathId).css("fill", "yellow");
-
-                //might not do anything
+                $('#' + pathId).css("fill", player.color);
+                //TODO: SEND THE TAKEN VALUE WITH THE PLAYER TOO!!
+                $('[id=' + player.pathId + ']').attr('taken', 'true');
                 $(this).off('click');
+
             });
 
             //known bug.. seems like the 
@@ -194,16 +265,22 @@
 
 
         });
-        socket.on('right answer', function(ter) {
+        socket.on('right answer', function(response) {
             console.log("Right answer event received");
-
             //change the colour of the path
-            $('#' + ter).css("fill", player.color);
+            $('#' + response.pathId).css("fill", response.color);
+        });
+
+        socket.on('county-conquered', function(county) {
+            console.log('county-conquered');
+            $('[id="' + county + '"]').attr('taken', 'true');
         });
 
 
 
 
+
+        //chat functionality
         $('#message-input-form').on('submit', function(event) {
             event.preventDefault();
             socket.emit('chat msg', {

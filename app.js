@@ -26,6 +26,8 @@ var questionsTable = [];
 var colArray = ['yellow', 'blue', 'green'];
 var pNumber = 0;
 
+
+
 //db config
 var sqlConnection = mysql.createConnection({
     host: 'localhost',
@@ -116,14 +118,17 @@ app.use(function (e, req, res, next) {
         });
     }
 });
-
+var colArrayIndex = 0;
 io.on('connection', function (socket) {
-
+    if (colArrayIndex > 3) {
+        colArrayIndex = 0;
+    }
     //new Player(id, socketid, username, color) //only usefull information is sent back and forth
     //create a new instance of player each time a user access the link
 
     if (connectedUser != null) {
-        var player = new Player(connectedUser.id, socket.id, connectedUser.username, 'yellow');
+        var player = new Player(connectedUser.id, socket.id, connectedUser.username, colArray[colArrayIndex]);
+        colArrayIndex++;
         players.push(player);
         connectedUser = null;
         //        console.log(players);
@@ -137,86 +142,100 @@ io.on('connection', function (socket) {
         console.log('user disconnected');
         var found = findObjectByKey(players, 'socketId', socket.id);
         if (found != null) {
-            players.splice(found, 1)
+            players.splice(found, 1);
         }
         io.emit('user-connected', players);
     });
 
-
     //chat functionality
     socket.on('chat msg', function (msg) {
-        //THE COMMENTED CODE CAN BE USED IN ORDER TO SAVE THE MESSAGES INTO THE DATABASE
-        //        sql = "INSERT INTO messages (user, message) VALUES ('" + msg.user + "', '" + msg.msg + "');";
-        //        console.log(sql);
-        //        conn.query(sql, function (error, results, fields) {
-        //            if (error) throw error;
-        //        });
         //send the message to the other users
         socket.broadcast.emit('chat msg', msg);
     });
 
 
 
-    //show the number of connected players to the webiste (including the ones without an ID)
+
+    //deciding when the game starts
+    if (players.length < 3) {
+        //wait for all players to connect
+        console.log('waiting for players \n');
+        io.emit('waiting-for-players');
+    } else if (players.length === 3) {
+        //room is full start the game
+        console.log('game starts \n');
+        io.emit('game-ready');
+    } else {
+        //game already started
+        //need to redirect the user to a different page for now // Don't know how to do that
+        console.log('room is full \n');
+        //redirect the user to a different page 
+        //        app.use(express.static("./fullRoom")); //doesn't work
+        //untill redirect will work
+        io.emit('room-full');
+    }
+
+
+
+    socket.on('request random question', function () {
+        var question = randomQuestion(questionsTable)
+        socket.emit('random question', question);
+    });
+
+
+    socket.on('right answer', function (player) {
+
+        console.log("Right answer event received");
+        socket.broadcast.emit('right answer', player);
+        var found = findObjectByKey(players, 'socketId', player.socketId);
+        players.splice(found, 1);
+        players.push(player);
+        io.emit('update-players', players);
+    });
+
+
+
+    socket.on('conquer-county', function (county) {
+        console.log('county conquered: ' + county);
+        socket.broadcast.emit('county-conquered', county);
+    });
+
+
+
+    socket.on('game-over', function () {
+        console.log("game-over");
+        io.emit('end-game');
+    });
+
+
+    //save the stats  
+    socket.on('save-stats', function (player) {
+        var position = findPosition(players, player);
+        player.position = position;
+        var found = findObjectByKey(users, 'id', player.id);
+        if (position === 1) { //FIRST POSITION
+            //TODO: Give him an amount of coins and exp
+            sql
+
+        } else if (position === 2) { //SECOND POSITION
+            //TODO: Give him an amount of coins and exp
+        } else { //THIRD POSITION
+            //TODO: Give him an amount of coins/exp
+        }
+
+        var sqlQuery = "UPDATE users()";
+        sqlConnection.query(sqlQuery, function (error, results, fields) {
+            if (error) throw error;
+        });
+        socket.emit('show-stats', player);
+    });
+
+
+
+
+
+    //show the number of connected players to the webiste (including the ones without an ID)  
     console.log(io.engine.clientsCount);
-
-
-    //    io.emit('room-full');
-
-
-
-
-
-
-
-    //
-    //
-    //    //deciding when the game starts
-    //    players.push(player);
-    //    if (players.length < 3) {
-    //        //wait for all players to connect
-    //        console.log('waiting for players \n');
-    //        io.emit('waiting-for-players');
-    //    } else if (players.length === 3) {
-    //        //room is full start the game
-    //        console.log('game starts \n');
-    //        io.emit('game-ready');
-    //    } else {
-    //        //game already started
-    //        //need to redirect the user to a different page for now // Don't know how to do that
-    //        console.log('room is full \n');
-    //        players.pop(player); //pops the user from the array
-    //        //redirect the user to a different page 
-    //        //        app.use(express.static("./fullRoom")); //doesn't work
-    //        //untill redirect will work
-    //        io.emit('room-full');
-    //    }
-    //    //show players event
-    //
-    //
-    //    socket.on('disconnect', function () {
-    //        //        io.emit('disc'); //not using yet
-    //        console.log('user ' + socket.id + ' disconnected\n');
-    //        players.pop(socket.id);
-    //    });
-    //
-    //    console.log(players);
-    //
-    //    io.emit('user-connected', players);
-    //
-    //    socket.on('request random question', function () {
-    //        var question = randomQuestion(questionsTable)
-    //        socket.emit('random question', question);
-    //    });
-    //
-    //    //this method runs multiple times, for some reason //doesnt cause any trouble yet
-    //    socket.on('right answer', function (ter) {
-    //        console.log(ter);
-    //        console.log("Right answer event received");
-    //        socket.broadcast.emit('right answer', ter);
-    //        console.log("Right answer event sent");
-    //    });
-
 });
 
 
@@ -225,17 +244,65 @@ server.listen(port, function () {
     console.log('listening on *:' + port + '\n');
 });
 
+//help functions
+//return a random question from the question array
 function randomQuestion(questions) {
     var question = questions[Math.floor(Math.random() * 100 % 91) + 1];
-    console.log(question);
+
     return question;
 }
+//return the index of the object inside an array
+function findObjectByKey(array, key, value) {
+    for (var i = 0; i < array.length; i++) {
+        if (array[i][key] === value) {
+            //            return array[i];
+            return i;
+        }
+    }
+    return null;
+}
+//return the position of the user when game ended
+function findPosition(players, player) {
+    var playerCounties = [];
+    for (i = 0; i < players.length; i++) {
+        playerCounties[i] = players[i].counties;
+    }
 
+    if (Math.max(...playerCounties) === player.counties) {
+        return 1;
+    } else if (Math.min(...playerCounties) === player.counties) {
+        var d = Math.min(...playerCounties);
+        var ct = 0;
+        for (i = 0; i < playerCounties.length; i++)
+            if (playerCounties[i] === d)
+                ct++;
+        if (ct === 2) {
+            return 2;
+        } else {
+            var d = Math.max(...playerCounties);
+            var ct = 0;
+            for (i = 0; i < playerCounties.length; i++)
+                if (playerCounties[i] === d)
+                    ct++;
+            if (ct === 2) {
+                return 2;
+            }
+            return 3;
+        }
+    }
+    return 2;
+}
+
+
+//classes
 function Player(_id, _socketId, _username, _col) {
     this.id = _id;
     this.socketId = _socketId;
     this.username = _username;
     this.color = _col;
+    this.counties = 0;
+    this.pathId;
+    this.position = 0;
 
 }
 
@@ -249,14 +316,8 @@ function User(_id, _username, _email, _password, _coins, _experience, _image) {
     this.image = _image;
 }
 
-function findObjectByKey(array, key, value) {
-    for (var i = 0; i < array.length; i++) {
-        if (array[i][key] === value) {
-            //            return array[i];
-            return i;
-        }
-    }
-    return null;
-}
 
-//TODO: SET AN ALGORITHM THAT SETS THE COLOURS OF THE PLAYERS
+
+
+//TODOS: 1. SET AN ALGORITHM THAT SETS THE COLOURS OF THE PLAYERS
+//       2.
